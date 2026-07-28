@@ -1,7 +1,5 @@
 # chronos2-cpp
 
-# chronos2-cpp
-
 End-to-end C++ pipeline for realised-volatility forecasting: Bloomberg BLPAPI
 ingest → SQLite → feature engineering → Chronos-2 inference via ONNX Runtime,
 benchmarked against HAR-RV and persistence with Diebold-Mariano tests.
