@@ -4,6 +4,13 @@ End-to-end C++ pipeline for realised-volatility forecasting: Bloomberg BLPAPI
 ingest → SQLite → feature engineering → Chronos-2 inference via ONNX Runtime,
 benchmarked against HAR-RV and persistence with Diebold-Mariano tests.
 
+## Contributors
+
+Special thanks to [@ByteJoseph](https://github.com/ByteJoseph) for their contributions, feedback, and support during the development of this project.
+
+Additional contributors and their specific contributions will be acknowledged here as the project evolves.
+
+
 ## Layout
 
 | Path | Contents |
