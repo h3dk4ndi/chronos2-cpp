@@ -67,3 +67,14 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+build/
+*.db
+*.db-journal
+*.onnx.data
+*.exe
+*.dll
+*.o
+*.obj
+.vscode/
+.vs/
