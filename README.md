@@ -1,5 +1,9 @@
 # chronos2-cpp
 
+<p align="center">
+  <img src="images/ceo_mascot.png" alt="Little CEO mascot" width="250">
+</p>
+
 End-to-end C++ pipeline for realised-volatility forecasting: Bloomberg BLPAPI
 ingest → SQLite → feature engineering → Chronos-2 inference via ONNX Runtime,
 benchmarked against HAR-RV and persistence with Diebold-Mariano tests.
