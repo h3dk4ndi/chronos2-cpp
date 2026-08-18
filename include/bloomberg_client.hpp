@@ -4,6 +4,8 @@
 #include <blpapi_service.h>
 #include <blpapi_request.h>
 
+namespace blpapi = BloombergLP::blpapi;
+
 #include <map>
 #include <memory>
 #include <string>
@@ -11,6 +13,7 @@
 
 #include "types.hpp"
 #include "sqlite_storage.hpp"
+
 
 /*
 ┌───────────────────────────────────────────────────┐

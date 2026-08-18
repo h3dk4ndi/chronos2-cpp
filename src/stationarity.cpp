@@ -6,6 +6,8 @@
 #include <limits>
 #include <stdexcept>
 
+constexpr double PI = 3.14159265358979323846;
+
 std::vector<double> Adfuller::diff() {
     std::vector<double> delta_x {};
     for (size_t i = 1;i < x.size() ;++i) {

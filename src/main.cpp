@@ -2,6 +2,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <chrono>
 
 #include "config.hpp"
 #include "types.hpp"
@@ -25,7 +26,10 @@
 
 
 int main() {
-    const bool        REFRESH_DATA = false;          // true only for a fresh pull
+    const auto t0 = std::chrono::steady_clock::now();
+
+    const bool        REFRESH_DATA = true;          // true only for a fresh pull
+    const bool        REBUILD_PREP = true;
     const std::string TARGET_SEC   = "XAU Curncy";
 
     std::vector<std::string> secs = {
@@ -37,9 +41,10 @@ int main() {
     if (!sql.openDB("blp.db")) { printf("cannot open blp.db\n"); return 1; }
     sql.CreateBLP();
     sql.createMetaTable();
+    if (REBUILD_PREP) sql.dropPrep();
     sql.createPrep();
 
-    // ---- 1. ingest (skipped unless REFRESH_DATA) ---------------------
+    // ---- 1. ingest (Terminal required) -------------------------------
 #ifdef USE_BLPAPI
     if (REFRESH_DATA) {
         Bloomberg blp1(secs, {"PX_OPEN","PX_HIGH","PX_LOW","PX_LAST"}, "19960601", "20260601");
@@ -51,17 +56,40 @@ int main() {
         blp1.MetaReq(); blp1.MetaInputs();
         sql.begin(); blp1.MetaLoop(sql); sql.commit();
         sql.Check();
+    }
+#endif
 
+    // ---- 1b. rebuild features from stored blp_data (no Terminal) -----
+    if (REBUILD_PREP) {
         for (size_t i = 0; i < secs.size(); ++i) {
-            Preprocessing p(sql, secs[i], ROLL_W);
+            Preprocessing pp(sql, secs[i], ROLL_W);
+            auto rsv = pp.Realised_semivar();
+            auto lev = pp.Leverage_lag();
+
+            SQLite::PrepData d;
+            d.dates                   = pp.dates;
+            d.returns                 = pp.Returns();
+            d.close2closeRV           = pp.Close2CloseRV();
+            d.parkinson               = pp.Parkinson();
+            d.garmanKlass             = pp.GarmanKlass();
+            d.rogersSatchell          = pp.RogersSatchell();
+            d.yangZhang               = pp.YangZhang();
+            d.negativeRealisedSemivar = rsv.first;
+            d.positiveRealisedSemivar = rsv.second;
+            d.bipowerVariation        = pp.Bipower_variation();
+            d.signedJump              = pp.Signed_jump();
+            d.leverage                = lev.first;
+            d.leverageMean5           = lev.second;
+            d.jumpComponent           = pp.Jump_component();
+            d.relativeJump            = pp.Relative_jump();
+            d.modelTarget             = pp.ModelTarget();
+
             sql.begin();
-            sql.insertPrep(secs[i], p.dates, p.Returns(), p.Close2CloseRV(),
-                           p.Parkinson(), p.GarmanKlass(), p.RogersSatchell(),
-                           p.YangZhang(), p.ModelTarget());
+            sql.insertPrep(secs[i], d);
             sql.commit();
         }
 
-        size_t total = 0;                                  // receipts: 69,465
+        size_t total = 0;
         for (size_t i = 0; i < secs.size(); ++i) {
             SQLite::PrepData q = sql.loadPrep(secs[i]);
             total += q.dates.size();
@@ -69,7 +97,6 @@ int main() {
         }
         printf("%-16s %6zu (expect 69465)\n", "TOTAL", total);
     }
-#endif
 
     // ---- 2. load + build the context matrix --------------------------
     SQLite::PrepData p = sql.loadPrep(TARGET_SEC);
@@ -87,7 +114,8 @@ int main() {
            s.trainEnd, ROLL_W, s.testStart, N);
 
     // ---- 4. model ----------------------------------------------------
-    Chronos2ONNX model("models/chronos2.onnx");
+    //Chronos2ONNX model("models/chronos2.onnx");
+    Chronos2ONNX model("models/chronos2-finetune.onnx");
     if (model.horizon() != ROLL_W) {
         printf("!! graph horizon %lld != ROLL_W %d\n", (long long)model.horizon(), ROLL_W);
         return 1;
@@ -130,9 +158,13 @@ int main() {
         if (n % 200 == 0) {
             double a=0,b=0,c=0,e=0;
             for (size_t i=0;i<n;++i){ a+=lossC[i]; b+=lossL[i]; c+=lossH[i]; e+=lossP[i]; }
-            printf("   %5zu origins  mean %.5f  last %.5f  har %.5f  pers %.5f\n",
-                   n, a/n, b/n, c/n, e/n);
-        }
+            const double el  = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - t0).count();
+            const double eta = el * ((double)(last - first) / (double)n - 1.0);    
+            printf("   %5zu origins  mean %.5f  last %.5f  har %.5f  pers %.5f"
+                   "   %.0fs  eta %.0fs\n",
+                   n, a/n, b/n, c/n, e/n, el, eta);
+        }   
     }
     if (n == 0) { printf("no valid origins\n"); return 1; }
 
@@ -156,5 +188,6 @@ int main() {
     printf("   DM last vs HAR         %+8.4f   p = %.4g\n", dLH.stat, dLH.pvalue);
     printf("   DM mean vs HAR         %+8.4f   p = %.4g\n", dCH.stat, dCH.pvalue);
     printf("   DM mean vs persistence %+8.4f   p = %.4g\n", dCP.stat, dCP.pvalue);
+
     return 0;
 }

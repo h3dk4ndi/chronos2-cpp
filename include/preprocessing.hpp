@@ -66,6 +66,24 @@ public:
     std::vector<double> YangZhang();
 
 
+    // Negative and positive realised semivariance
+    std::pair<std::vector<double>, std::vector<double>> Realised_semivar();
+
+    // Signed Jump 
+    std::vector<double> Signed_jump(); 
+
+    // Leverage Lag
+    std::pair<std::vector<double>, std::vector<double>> Leverage_lag();
+    
+    // Bipower variation
+    std::vector<double> Bipower_variation(); 
+
+    // Jump component
+    std::vector<double> Jump_component();
+    
+    // Relative Jump 
+    std::vector<double> Relative_jump();
+
     // Model Target 
     std::vector<double> ModelTarget();
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <onnxruntime/onnxruntime_cxx_api.h>
+#include <onnxruntime_cxx_api.h>
 
 #include <cstdint>
 #include <string>

@@ -4,17 +4,32 @@
 #include <cstdio>
 #include <limits>
 
+// 18/08/2026 -- BuildMatrix is no longer hradcoded in terms of variable quantity
 std::vector<std::vector<double>> BuildMatrix(const SQLite::PrepData& p) {
     const size_t N = p.dates.size();
-    std::vector<std::vector<double>> m(6, std::vector<double>(N));
-    for (size_t i = 0; i < N; ++i) {
-        m[0][i] = SafeLog(p.close2closeRV[i]);      // 0  TARGET
-        m[1][i] = SafeLog(p.parkinson[i]);
-        m[2][i] = SafeLog(p.garmanKlass[i]);
-        m[3][i] = SafeLog(p.rogersSatchell[i]);
-        m[4][i] = SafeLog(p.yangZhang[i]);
-        m[5][i] = p.returns[i];                     // already a rate, no log
-    }
+    std::vector<std::vector<double>> m;
+
+    auto addLog = [&](const std::vector<double>& src) {
+        std::vector<double> row(N);
+        for (size_t i = 0; i < N; ++i) row[i] = SafeLog(src[i]);
+        m.push_back(std::move(row));
+    };
+
+    addLog(p.close2closeRV);              // 0  TARGET
+    addLog(p.parkinson);                  // 1
+    addLog(p.garmanKlass);                // 2
+    addLog(p.rogersSatchell);             // 3
+    addLog(p.yangZhang);                  // 4
+    m.push_back(p.returns);               // 5  already a rate, no log
+    addLog(p.negativeRealisedSemivar);    // 6
+    addLog(p.positiveRealisedSemivar);    // 7
+    addLog(p.bipowerVariation);      // 8   variance, > 0
+    m.push_back(p.signedJump);       // 9   can be negative
+    m.push_back(p.leverage);         // 10  <= 0
+    m.push_back(p.leverageMean5);    // 11  <= 0
+    m.push_back(p.jumpComponent);    // 12  >= 0, exactly 0 on most days
+    m.push_back(p.relativeJump);     // 13  [0,1)
+
     return m;
 }
 

@@ -4,6 +4,7 @@
 #include <limits>
 #include <numeric>
 #include <utility>
+#include <algorithm>
 
 Preprocessing::Preprocessing(SQLite& sql, const std::string& sec, int window)
     : meta(sql.loadMeta(sec)),
@@ -173,6 +174,93 @@ std::vector<double> Preprocessing::YangZhang() {
 
     return output;
 }
+
+// check !
+std::pair<std::vector<double>, std::vector<double>> Preprocessing::Realised_semivar() {
+    const std::vector<double> r = Returns();
+
+    std::vector<double> r_sq_neg;
+    std::vector<double> r_sq_pos;
+
+    r_sq_neg.reserve(r.size());
+    r_sq_pos.reserve(r.size());
+
+    for (double value : r) {
+        const double squared = value * value;
+
+        // Equivalent to r2 * (r < 0)
+        r_sq_neg.push_back(value < 0.0 ? squared : 0.0);
+
+        // Equivalent to r2 * (r > 0)
+        r_sq_pos.push_back(value > 0.0 ? squared : 0.0);
+    }
+
+    std::vector<double> output_neg = Roll_sum(r_sq_neg, roll_w);
+    std::vector<double> output_pos = Roll_sum(r_sq_pos, roll_w);
+
+    const double scale =
+        252.0 / static_cast<double>(roll_w);
+
+    for (std::size_t i = 0; i < r.size(); ++i) {
+        output_neg[i] *= scale;
+        output_pos[i] *= scale;
+    }
+
+    return {
+        std::move(output_neg),
+        std::move(output_pos)
+    };
+}
+
+// 18/08/2026 -- needs thorough review
+// ---- Group A ----
+std::vector<double> Preprocessing::Signed_jump() {
+    auto rsv = Realised_semivar();                       // {neg, pos}
+    std::vector<double> out(rsv.first.size());
+    for (size_t i = 0; i < out.size(); ++i)
+        out[i] = rsv.second[i] - rsv.first[i];           // pos - neg
+    return out;
+}
+
+std::pair<std::vector<double>, std::vector<double>> Preprocessing::Leverage_lag() {
+    const std::vector<double> r = Returns();
+    std::vector<double> lev(r.size());
+    for (size_t i = 0; i < r.size(); ++i) lev[i] = std::min(r[i], 0.0);
+    return { lev, Roll_mean(lev, 5) };                   // 5, NOT roll_w
+}
+
+// ---- Group J ----
+std::vector<double> Preprocessing::Bipower_variation() {
+    const std::vector<double> r = Returns();
+    std::vector<double> prod(r.size(), std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 1; i < r.size(); ++i)                // prod[0] stays NaN
+        prod[i] = std::abs(r[i]) * std::abs(r[i - 1]);
+    std::vector<double> out = Roll_sum(prod, roll_w);
+    const double scale = (252.0 / (double)roll_w) * (M_PI / 2.0);
+    for (double& v : out) v *= scale;
+    return out;
+}
+
+std::vector<double> Preprocessing::Jump_component() {
+    const std::vector<double> rv = Close2CloseRV();
+    const std::vector<double> bv = Bipower_variation();
+    std::vector<double> out(rv.size(), std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < rv.size(); ++i)
+        if (std::isfinite(rv[i]) && std::isfinite(bv[i]))
+            out[i] = std::max(rv[i] - bv[i], 0.0);
+    return out;
+}
+
+std::vector<double> Preprocessing::Relative_jump() {
+    const std::vector<double> rv   = Close2CloseRV();
+    const std::vector<double> jump = Jump_component();
+    std::vector<double> out(rv.size(), std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < rv.size(); ++i)
+        if (std::isfinite(jump[i]) && std::isfinite(rv[i]) && rv[i] > 0.0)
+            out[i] = jump[i] / rv[i];
+    return out;
+}
+
 
 std::vector<double> Preprocessing::ModelTarget() {
     std::vector<double> rv = Close2CloseRV();                 

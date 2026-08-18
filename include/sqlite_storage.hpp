@@ -41,8 +41,13 @@ public:
     };
 
     struct PrepData {
-        std::vector<int64_t> dates;
-        std::vector<double> returns, close2closeRV, parkinson, garmanKlass, rogersSatchell, yangZhang, modelTarget;
+    std::vector<int64_t> dates;
+    std::vector<double> returns, close2closeRV, parkinson, garmanKlass,
+                        rogersSatchell, yangZhang,
+                        negativeRealisedSemivar, positiveRealisedSemivar,
+                        bipowerVariation, signedJump, leverage,
+                        leverageMean5, jumpComponent, relativeJump,
+                        modelTarget;
     };
 
 
@@ -81,17 +86,12 @@ public:
     // InstrumentMeta is defined after #include
     InstrumentMeta loadMeta(const std::string& sec);
 
-    // Preprocessed Data Handler
+        // Preprocessed Data Handler
+    void dropPrep();          // one-shot: drop prep_data so createPrep can rebuild the schema
     void createPrep();
 
     // Max attention on this one !
-    void insertPrep(
-        const std::string& security, const std::vector<int64_t>& dates,
-        const std::vector<double>& returns, const std::vector<double>& close2closeRV,
-        const std::vector<double>& parkinson, const std::vector<double>& garmanKlass,
-        const std::vector<double>& rogersSatchell, const std::vector<double>& yangZhang, 
-        const std::vector<double>& modelTarget
-    );
+    void insertPrep(const std::string& security, const PrepData& d);
 
     // ! ! !
     PrepData loadPrep(const std::string& sec);
