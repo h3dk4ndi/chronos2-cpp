@@ -127,3 +127,4 @@ that were insufficient to adapt the foundation model.
   against HAR-RV are pending.
 - The covariate ablation (6 / 8 / 14 rows) was run on `chronos-2-small`; only
   the 14-row specification has been evaluated on the 120M checkpoint.
+- fractional differencing is written although not yet applied on the data
