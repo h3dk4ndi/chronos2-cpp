@@ -113,9 +113,14 @@ int main() {
     printf("\n[split] train [0,%zu)  purged %d  test [%zu,%zu)\n",
            s.trainEnd, ROLL_W, s.testStart, N);
 
-    // ---- 4. model ----------------------------------------------------
-    //Chronos2ONNX model("models/chronos2.onnx");
-    Chronos2ONNX model("models/chronos2-finetune.onnx");
+    /*
+    ┌───────────────────────────────────────────────────┐
+    │ ---- 4. model ----------------------------------- │
+    └───────────────────────────────────────────────────┘
+    */
+
+    Chronos2ONNX model("models/chronos2.onnx");
+    //Chronos2ONNX model("models/chronos2-finetune.onnx");
     if (model.horizon() != ROLL_W) {
         printf("!! graph horizon %lld != ROLL_W %d\n", (long long)model.horizon(), ROLL_W);
         return 1;
