@@ -1,10 +1,12 @@
 #include "preprocessing.hpp"
+#include "stationarity.hpp"
 
 #include <cmath>
 #include <limits>
 #include <numeric>
 #include <utility>
 #include <algorithm>
+
 
 Preprocessing::Preprocessing(SQLite& sql, const std::string& sec, int window)
     : meta(sql.loadMeta(sec)),

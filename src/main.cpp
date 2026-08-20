@@ -110,8 +110,15 @@ int main() {
 
     // ---- 3. split (indices only - the table is never truncated) ------
     Split s = TrainTestIndex(N, TEST_FRAC, (size_t)ROLL_W);
-    printf("\n[split] train [0,%zu)  purged %d  test [%zu,%zu)\n",
-           s.trainEnd, ROLL_W, s.testStart, N);
+    //printf("\n[split] train [0,%zu)  purged %d  test [%zu,%zu)\n",
+    //       s.trainEnd, ROLL_W, s.testStart, N);
+
+    size_t first = s.testStart;
+    if (first < (size_t)CONTEXT - 1) first = (size_t)CONTEXT - 1;
+    const size_t last = N - (size_t)ROLL_W;
+
+    printf("\n[split] train [0,%zu)  purged %d  test [%zu,%zu)  origins %zu..%zu\n",
+           s.trainEnd, ROLL_W, s.testStart, N, first, last - 1);
 
     /*
     ┌───────────────────────────────────────────────────┐
@@ -127,9 +134,9 @@ int main() {
     }
 
     // ---- 5. walk forward ---------------------------------------------
-    size_t first = s.testStart;
-    if (first < (size_t)CONTEXT - 1) first = (size_t)CONTEXT - 1;
-    const size_t last = N - (size_t)ROLL_W;      // modelTarget valid for i < N-w
+    //size_t first = s.testStart;
+    //if (first < (size_t)CONTEXT - 1) first = (size_t)CONTEXT - 1;
+    //const size_t last = N - (size_t)ROLL_W;      // modelTarget valid for i < N-w
 
     std::vector<double> lossC, lossL, lossH, lossP;
     lossC.reserve(2400); lossL.reserve(2400); lossH.reserve(2400); lossP.reserve(2400);
@@ -173,6 +180,14 @@ int main() {
     }
     if (n == 0) { printf("no valid origins\n"); return 1; }
 
+
+    
+    std::vector<double> lossT;
+    { FILE* f = fopen("tcn_loss.csv", "r");
+      if (f) { double v; while (fscanf(f, "%lf", &v) == 1) lossT.push_back(v); fclose(f); }
+      else printf("[tcn] tcn_loss.csv not found -- run run_tcn.py first\n"); }
+    
+
     // ---- 6. report ----------------------------------------------------
     double mc=0, ml=0, mh=0, mp=0;
     for (size_t i=0;i<n;++i){ mc+=lossC[i]; ml+=lossL[i]; mh+=lossH[i]; mp+=lossP[i]; }
@@ -193,6 +208,27 @@ int main() {
     printf("   DM last vs HAR         %+8.4f   p = %.4g\n", dLH.stat, dLH.pvalue);
     printf("   DM mean vs HAR         %+8.4f   p = %.4g\n", dCH.stat, dCH.pvalue);
     printf("   DM mean vs persistence %+8.4f   p = %.4g\n", dCP.stat, dCP.pvalue);
+
+    
+    if (lossT.size() == n) {
+        double mt = 0.0;
+        for (size_t i = 0; i < n; ++i) mt += lossT[i];
+        mt /= n;
+
+        DMResult dTH = DieboldMariano(lossT, lossH, (size_t)ROLL_W);
+        DMResult dTL = DieboldMariano(lossT, lossL, (size_t)ROLL_W);
+        DMResult dTP = DieboldMariano(lossT, lossP, (size_t)ROLL_W);
+
+        printf("   QLIKE TCN                  %.6f\n", mt);
+        printf("   skill TCN vs HAR       %+.2f%%\n", 100.0*(1.0 - mt/mh));
+        printf("   DM TCN vs HAR          %+8.4f   p = %.4g\n", dTH.stat, dTH.pvalue);
+        printf("   DM TCN vs chronos last %+8.4f   p = %.4g\n", dTL.stat, dTL.pvalue);
+        printf("   DM TCN vs persistence  %+8.4f   p = %.4g\n", dTP.stat, dTP.pvalue);
+    } else if (!lossT.empty()) {
+        printf("!! tcn origins %zu != %zu -- misaligned, DM skipped\n", lossT.size(), n);
+    }
+    
+
 
     return 0;
 }

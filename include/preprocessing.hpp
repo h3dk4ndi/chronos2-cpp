@@ -6,6 +6,7 @@
 
 #include "types.hpp"
 #include "sqlite_storage.hpp"
+#include "stationarity.hpp"
 
 /*
 ┌───────────────────────────────────────────────────┐
