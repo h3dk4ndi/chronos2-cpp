@@ -79,29 +79,20 @@ Both read `prep_data` from `blp.db` and score the same 2,321 origins.
 
 ## Results
 
-XAU Curncy, 2,321 origins, `ROLL_W = 21`, `CONTEXT = 512`, 14 covariate rows.
-Split: 4,326 train / 523 validation / 2,321 test windows, purged by 21 days at
-each boundary. Chronos-2 is the 120M `amazon/chronos-2` checkpoint.
+The database contains 69,465 daily observations across nine Bloomberg instruments. Evaluation was conducted on `XAU Curncy`, using 7,806 observations and a purged chronological test set of 2,321 forecast origins. Each model forecasts 21-day realised volatility; lower QLIKE indicates better predictive accuracy.
 
-| Model | QLIKE | Skill vs HAR |
-|---|---|---|
-| **TCN (from scratch)** | **0.2441** | **+11.5%** |
-| HAR-RV | 0.2760 | — |
-| Chronos-2 zero-shot (last of path) | 0.2787 | −1.0% |
-| Chronos-2 fine-tuned (mean of path) | 0.2814 | −2.0% |
-| Chronos-2 zero-shot (mean of path) | 0.2912 | −5.5% |
-| Persistence | 0.3308 | −19.9% |
-| Chronos-2 fine-tuned (last of path) | 0.3370 | −22.1% |
+| Model                              |      QLIKE | Skill vs HAR-RV |
+| ---------------------------------- | ---------: | --------------: |
+| TCN (trained from scratch)         | **0.2441** |     **+11.54%** |
+| HAR-RV                             |     0.2760 |               — |
+| Chronos-2 zero-shot (last of path) |     0.2787 |          −0.99% |
+| Chronos-2 zero-shot (mean of path) |     0.2912 |          −5.52% |
+| Persistence                        |     0.3308 |         −19.87% |
 
-Diebold-Mariano, Newey-West with the Harvey-Leybourne-Newbold small-sample
-correction. Positive statistic favours the second model.
+The TCN achieved the lowest QLIKE, improving upon HAR-RV by 11.54%. However, this improvement was not statistically significant under the Diebold–Mariano test (`DM = −1.48`, `p = 0.140`). Its advantage over zero-shot Chronos-2 was likewise not significant (`p = 0.235`), although it significantly outperformed persistence at the 5% level (`p = 0.042`).
 
-| Comparison | DM | p |
-|---|---|---|
-| Chronos-2 last vs HAR-RV | +0.13 | 0.90 |
-| Chronos-2 mean vs HAR-RV | +0.60 | 0.55 |
-| Chronos-2 last vs mean | −1.18 | 0.24 |
-| Chronos-2 mean vs persistence | −4.04 | 5.6e-05 |
+Zero-shot Chronos-2 using the terminal forecast was statistically indistinguishable from HAR-RV (`DM = 0.13`, `p = 0.896`), despite receiving no task-specific training. The mean-of-path Chronos-2 forecast also significantly outperformed persistence (`DM = −4.04`, `p < 0.001`). Overall, the TCN produced the strongest point estimate, while the statistical tests did not establish a significant difference in predictive accuracy among the TCN, HAR-RV and zero-shot Chronos-2.
+
 
 ### Notes
 
