@@ -99,27 +99,117 @@ int main() {
     }
 
     // ---- 2. load + build the context matrix --------------------------
-    SQLite::PrepData p = sql.loadPrep(TARGET_SEC);
-    const size_t N = p.dates.size();
-    if (N < (size_t)CONTEXT + ROLL_W + 10) { printf("not enough rows\n"); return 1; }
-    printf("\n[data] %s  %zu rows  %lld -> %lld\n", TARGET_SEC.c_str(), N,
-           (long long)p.dates.front(), (long long)p.dates.back());
+    //SQLite::PrepData p = sql.loadPrep(TARGET_SEC);
+    //const size_t N = p.dates.size();
+    //if (N < (size_t)CONTEXT + ROLL_W + 10) { printf("not enough rows\n"); return 1; }
+    //printf("\n[data] %s  %zu rows  %lld -> %lld\n", TARGET_SEC.c_str(), N,
+    //       (long long)p.dates.front(), (long long)p.dates.back());
 
-    std::vector<std::vector<double>> M = BuildMatrix(p);
-    ReportNaN(M);
+    //std::vector<std::vector<double>> M = BuildMatrix(p);
+    //ReportNaN(M);
 
     // ---- 3. split (indices only - the table is never truncated) ------
-    Split s = TrainTestIndex(N, TEST_FRAC, (size_t)ROLL_W);
+    //Split s = TrainTestIndex(N, TEST_FRAC, (size_t)ROLL_W);
     //printf("\n[split] train [0,%zu)  purged %d  test [%zu,%zu)\n",
     //       s.trainEnd, ROLL_W, s.testStart, N);
 
+    //size_t first = s.testStart;
+    //if (first < (size_t)CONTEXT - 1) first = (size_t)CONTEXT - 1;
+    //const size_t last = N - (size_t)ROLL_W;
+
+    //printf("\n[split] train [0,%zu)  purged %d  test [%zu,%zu)  origins %zu..%zu\n",
+    //       s.trainEnd, ROLL_W, s.testStart, N, first, last - 1);
+
+
+
+
+    // ---- 2. load target data ---------------------------------------------
+    SQLite::PrepData p = sql.loadPrep(TARGET_SEC);
+    const size_t N = p.dates.size();
+
+    if (N < static_cast<size_t>(CONTEXT) +
+            static_cast<size_t>(ROLL_W) + 10) {
+        printf("not enough rows\n");
+        return 1;
+    }
+
+    printf(
+        "\n[data] %s  %zu rows  %lld -> %lld\n",
+        TARGET_SEC.c_str(),
+        N,
+        static_cast<long long>(p.dates.front()),
+        static_cast<long long>(p.dates.back())
+    );
+
+    // ---- 3. determine split before constructing the matrix ---------------
+    Split s = TrainTestIndex(
+        N,
+        TEST_FRAC,
+        static_cast<size_t>(ROLL_W)
+    );
+
+    /*
+    * Build the complete 126-variable matrix.
+    *
+    * trainEnd is passed so that missing-value replacement, if performed
+    * inside BuildMatrix(), is estimated from training observations only.
+    */
+    std::vector<std::vector<double>> M =
+        BuildMatrix(
+            sql,
+            secs,
+            TARGET_SEC,
+            s.trainEnd
+        );
+
+    if (M.size() != secs.size() * 14) {
+        printf(
+            "incorrect matrix size: received %zu rows, expected %zu\n",
+            M.size(),
+            secs.size() * 14
+        );
+        return 1;
+    }
+
+    for (size_t row = 0; row < M.size(); ++row) {
+        if (M[row].size() != N) {
+            printf(
+                "matrix row %zu has %zu dates; expected %zu\n",
+                row,
+                M[row].size(),
+                N
+            );
+            return 1;
+        }
+    }
+
+    printf(
+        "[matrix] %zu securities x 14 features = %zu variables\n",
+        secs.size(),
+        M.size()
+    );
+
+    ReportNaN(M);
+
+    // ---- 3b. establish test origins -------------------------------------
     size_t first = s.testStart;
-    if (first < (size_t)CONTEXT - 1) first = (size_t)CONTEXT - 1;
-    const size_t last = N - (size_t)ROLL_W;
 
-    printf("\n[split] train [0,%zu)  purged %d  test [%zu,%zu)  origins %zu..%zu\n",
-           s.trainEnd, ROLL_W, s.testStart, N, first, last - 1);
+    if (first < static_cast<size_t>(CONTEXT) - 1)
+        first = static_cast<size_t>(CONTEXT) - 1;
 
+    const size_t last =
+        N - static_cast<size_t>(ROLL_W);
+
+    printf(
+        "\n[split] train [0,%zu)  purged %d  "
+        "test [%zu,%zu)  origins %zu..%zu\n",
+        s.trainEnd,
+        ROLL_W,
+        s.testStart,
+        N,
+        first,
+        last - 1
+    );
     /*
     ┌───────────────────────────────────────────────────┐
     │ ---- 4. model ----------------------------------- │

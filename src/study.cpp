@@ -3,8 +3,10 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
+#include <stdexcept>
 
 // 18/08/2026 -- BuildMatrix is no longer hradcoded in terms of variable quantity
+/*
 std::vector<std::vector<double>> BuildMatrix(const SQLite::PrepData& p) {
     const size_t N = p.dates.size();
     std::vector<std::vector<double>> m;
@@ -32,6 +34,90 @@ std::vector<std::vector<double>> BuildMatrix(const SQLite::PrepData& p) {
 
     return m;
 }
+*/
+
+std::vector<std::vector<double>> BuildMatrix(
+    SQLite& sql,
+    const std::vector<std::string>& securities,
+    const std::string& targetSecurity,
+    std::size_t trainEnd)
+{
+    // 1. Load XAU and use its dates as the master calendar.
+    SQLite::PrepData target = sql.loadPrep(targetSecurity);
+    const auto& masterDates = target.dates;
+    const std::size_t N = masterDates.size();
+
+    std::vector<std::vector<double>> M;
+    M.reserve(securities.size() * 14);
+
+    // 2. Ensure XAU is the first security.
+    std::vector<std::string> ordered{targetSecurity};
+
+    for (const auto& sec : securities) {
+        if (sec != targetSecurity)
+            ordered.push_back(sec);
+    }
+
+    // 3. Load and append 14 aligned features per security.
+    for (const auto& sec : ordered) {
+        SQLite::PrepData p =
+            sec == targetSecurity ? target : sql.loadPrep(sec);
+
+        auto appendAligned =
+            [&](const std::vector<double>& source, bool takeLog)
+        {
+            std::vector<double> row(
+                N,
+                std::numeric_limits<double>::quiet_NaN()
+            );
+
+            std::size_t i = 0; // XAU date
+            std::size_t j = 0; // current security date
+
+            while (i < N && j < p.dates.size()) {
+                if (masterDates[i] == p.dates[j]) {
+                    row[i] = takeLog
+                        ? SafeLog(source[j])
+                        : source[j];
+
+                    ++i;
+                    ++j;
+                }
+                else if (p.dates[j] < masterDates[i]) {
+                    ++j;
+                }
+                else {
+                    // No observation for this security on XAU date i.
+                    ++i;
+                }
+            }
+
+            M.push_back(std::move(row));
+        };
+
+        appendAligned(p.close2closeRV,           true);
+        appendAligned(p.parkinson,               true);
+        appendAligned(p.garmanKlass,             true);
+        appendAligned(p.rogersSatchell,          true);
+        appendAligned(p.yangZhang,               true);
+        appendAligned(p.returns,                 false);
+        appendAligned(p.negativeRealisedSemivar, true);
+        appendAligned(p.positiveRealisedSemivar, true);
+        appendAligned(p.bipowerVariation,        true);
+        appendAligned(p.signedJump,              false);
+        appendAligned(p.leverage,                false);
+        appendAligned(p.leverageMean5,           false);
+        appendAligned(p.jumpComponent,           false);
+        appendAligned(p.relativeJump,            false);
+    }
+
+    if (M.size() != securities.size() * 14)
+        throw std::runtime_error("Incorrect matrix width.");
+
+    return M;
+}
+
+
 
 void ReportNaN(const std::vector<std::vector<double>>& m) {
     for (size_t v = 0; v < m.size(); ++v) {
