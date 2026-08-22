@@ -110,9 +110,7 @@ int main() {
 
     // ---- 3. split (indices only - the table is never truncated) ------
     Split s = TrainTestIndex(N, TEST_FRAC, (size_t)ROLL_W);
-    printf("\n[split] train [0,%zu)  purged %d  test [%zu,%zu)\n",
-           s.trainEnd, ROLL_W, s.testStart, N);
-
+    
     size_t first = s.testStart;
     if (first < (size_t)CONTEXT - 1) first = (size_t)CONTEXT - 1;
     const size_t last = N - (size_t)ROLL_W;

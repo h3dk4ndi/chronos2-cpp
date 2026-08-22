@@ -50,7 +50,7 @@ def load_splits(db="blp.db", sec="XAU Curncy", verbose=True):
     Xs = (M - mu) / sigma
 
     # Zero on the standardised scale equals the training mean.
-    Xs[~np.isfinite(Xs)] = 0.0
+    #Xs[~np.isfinite(Xs)] = 0.0
 
     def windows(t_lo, t_hi):
         ts = [t for t in range(t_lo, t_hi + 1)

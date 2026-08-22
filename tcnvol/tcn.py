@@ -11,7 +11,7 @@ from tcnvol.config import TCNConfig
 
 class TCN:
     """
-    Temporal Convolutional Network for binary classification.
+    Temporal Convolutional Network for regression.
 
     Architecture: stack of ResidualBlocks with increasing dilations,
     followed by a linear readout on the last timestep and sigmoid output.

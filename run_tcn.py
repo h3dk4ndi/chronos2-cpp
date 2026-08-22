@@ -12,6 +12,14 @@ from tcnvol.losses  import qlike
 SEED = 0
 
 
+import sqlite3, os
+print(os.path.abspath("blp.db"), os.path.getsize("blp.db"))
+con = sqlite3.connect("file:blp.db?mode=ro", uri=True)
+print("prep_data:", con.execute("SELECT COUNT(*) FROM prep_data").fetchone())
+print("by sec   :", con.execute(
+    "SELECT security, COUNT(*) FROM prep_data GROUP BY security").fetchall())
+print("blp_data :", con.execute("SELECT COUNT(*) FROM blp_data").fetchone())
+
 def main() -> None:
     np.random.seed(SEED)
 
