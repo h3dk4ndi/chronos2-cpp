@@ -375,43 +375,40 @@ Both read `prep_data` from `blp.db` and score the same 2,321 origins.
 
 ## Results
 
-The database contains 69,465 daily observations across nine Bloomberg instruments. Evaluation was conducted on `XAU Curncy`, using 7,806 observations and a purged chronological test set of 2,321 forecast origins. Each model forecasts 21-day realised volatility; lower QLIKE indicates better predictive accuracy.
+The final experiment uses **XAU/USD only** as the forecasting asset. Although additional Bloomberg series were collected during data preparation, the forecasting models use the 14 engineered features derived from XAU/USD rather than cross-asset inputs.
 
-| Model                              |      QLIKE | Skill vs HAR-RV |
-| ---------------------------------- | ---------: | --------------: |
-| TCN (trained from scratch)         | **0.2441** |     **+11.54%** |
-| HAR-RV                             |     0.2760 |               — |
-| Chronos-2 zero-shot (last of path) |     0.2787 |          −0.99% |
-| Chronos-2 zero-shot (mean of path) |     0.2912 |          −5.52% |
-| Persistence                        |     0.3308 |         −19.87% |
+The final evaluation uses a purged train/test split with a 21-day forecast horizon:
 
-The TCN achieved the lowest QLIKE, improving upon HAR-RV by 11.54%. However, this improvement was not statistically significant under the Diebold–Mariano test (`DM = −1.48`, `p = 0.140`). Its advantage over zero-shot Chronos-2 was likewise not significant (`p = 0.235`), although it significantly outperformed persistence at the 5% level (`p = 0.042`).
+```text
+[split] train [0,5443)  purged 21  test [5464,7806)
+[test origins] 2321
+```
+Forecast performance:
+| Model                   |      QLIKE |
+| ----------------------- | ---------: |
+| TCN                     | **0.2441** |
+| HAR-RV                  |     0.2760 |
+| Chronos-2, last-of-path |     0.2787 |
+| Chronos-2, mean-of-path |     0.2912 |
+| Persistence             |     0.3308 |
 
-Zero-shot Chronos-2 using the terminal forecast was statistically indistinguishable from HAR-RV (`DM = 0.13`, `p = 0.896`), despite receiving no task-specific training. The mean-of-path Chronos-2 forecast also significantly outperformed persistence (`DM = −4.04`, `p < 0.001`). Overall, the TCN produced the strongest point estimate, while the statistical tests did not establish a significant difference in predictive accuracy among the TCN, HAR-RV and zero-shot Chronos-2.
+The TCN achieved the lowest QLIKE, improving on HAR-RV by approximately **11.5%**.
 
+Diebold-Mariano tests did not show a statistically significant difference between TCN and HAR-RV at the **5%** level ($p = 0.1397$). TCN nevertheless significantly outperformed persistence ($p = 0.0422$).
 
-### Notes
+Chronos-2 substantially outperformed persistence when using the mean forecast path ($p < 0.001$), but did not significantly outperform HAR-RV.
 
-Zero-shot Chronos-2 is statistically indistinguishable from HAR-RV
-(DM = 0.13, p = 0.90) despite never having seen gold. It beats persistence
-decisively.
+The TCN was trained using:
+```text
+features = 14
+window   = 512
+epochs   = 50
+batch    = 64
+patience = 10
+```
+Early stopping selected the model at the minimum validation QLIKE:
+```
+best validation QLIKE = 0.1256
+test QLIKE            = 0.2441
+```
 
-Fine-tuning was attempted with LoRA on the attention projections
-(2.4M of 122M parameters trainable) over 4,911 purged training windows. The
-objective was pinball loss averaged across all 21 quantiles and all 21 horizon
-steps — the pretraining objective, not the evaluation target. Path-mean
-accuracy improved 3.4%; terminal-step accuracy, which is what QLIKE measures
-here, degraded 21%. The training objective has to match the evaluation target.
-
-The TCN is a 7-block weight-normalised dilated causal network, dilations
-`[1,2,4,8,16,32,64]` giving a receptive field of 509, roughly 8.6k parameters
-against Chronos-2's 121.8M. It trains from scratch on the same 4,326 windows
-that were insufficient to adapt the foundation model.
-
-### Caveats
-
-- The TCN result is a single seed. A multi-seed run and a Diebold-Mariano test
-  against HAR-RV are pending.
-- The covariate ablation (6 / 8 / 14 rows) was run on `chronos-2-small`; only
-  the 14-row specification has been evaluated on the 120M checkpoint.
-- fractional differencing is written although not yet applied on the data
