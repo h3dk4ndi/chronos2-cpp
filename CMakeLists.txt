@@ -21,9 +21,11 @@ target_include_directories(chronos2 PRIVATE include)
 find_package(Eigen3 REQUIRED)
 target_link_libraries(chronos2 PRIVATE Eigen3::Eigen sqlite3)
 
-target_include_directories(chronos2 PRIVATE ${ONNXRUNTIME_ROOT}/include)
-target_link_directories(chronos2    PRIVATE ${ONNXRUNTIME_ROOT}/lib)
-target_link_libraries(chronos2      PRIVATE onnxruntime)
+target_include_directories(chronos2 PRIVATE ${ONNXRUNTIME_ROOT}/include/onnxruntime)
+
+target_link_directories(chronos2 PRIVATE ${ONNXRUNTIME_ROOT}/lib)
+
+target_link_libraries(chronos2 PRIVATE onnxruntime)
 
 if(USE_BLPAPI)
     target_sources(chronos2 PRIVATE src/bloomberg_client.cpp)
