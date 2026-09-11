@@ -58,7 +58,7 @@ pacman -S mingw-w64-ucrt-x86_64-cmake \
           mingw-w64-ucrt-x86_64-ninja \
           mingw-w64-ucrt-x86_64-eigen3 \
           mingw-w64-ucrt-x86_64-sqlite3 \
-          mingw-w64-ucrt-x86_64-onnxruntime
+          mingw-w64-ucrt-x86_64-onnx
 ```
 Verify the development environment:
 ```bash
