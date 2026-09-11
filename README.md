@@ -60,6 +60,12 @@ pacman -S mingw-w64-ucrt-x86_64-cmake \
           mingw-w64-ucrt-x86_64-sqlite3 \
           mingw-w64-ucrt-x86_64-onnx
 ```
+
+Then in UCRT64:
+```bash
+pacman -S mingw-w64-ucrt-x86_64-onnxruntime
+```
+
 Verify the development environment:
 ```bash
 gcc --version
